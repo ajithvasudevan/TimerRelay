@@ -8,6 +8,9 @@ The Wemos runs a WiFi hotspot and gets the IP address 192.168.4.1. It runs a web
 
 The page at this URL allows the user to set the RTC time, and the two timers.
 
+The circuit can be powered either directly by a 5V DC power source as shown in the schematic diagram below, or a USB (mobile phone) charger connected to the USB port on the Wemos.
+
+
 ## Schematic
 
 ![Schematic](https://github.com/ajithvasudevan/TimerRelay/raw/master/TimerRelay.png)
