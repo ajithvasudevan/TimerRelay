@@ -7,3 +7,7 @@ There are two such relays which can be configured independently.
 The Wemos runs a WiFi hotspot and gets the IP address 192.168.4.1. It runs a web-server which can be accessed at http://192.168.4.1/  from a mobile phone or laptop computer connectd to the Wemos' hotspot.
 
 The page at this URL allows the user to set the RTC time, and the two timers.
+
+## Schematic
+
+![Schematic](https://github.com/ajithvasudevan/TimerRelay/raw/master/TimerRelay.png)
