@@ -12,7 +12,7 @@ ESP8266WebServer server ( 80 );
 
 RTC_DS3231 rtc;
  
-char daysOfTheWeek[7][12] = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
+//char daysOfTheWeek[7][12] = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
 
 int starthr1 =  18;
 int startmin1 = 0;
@@ -305,7 +305,7 @@ void printDate(DateTime d) {
 }
 //----------------------------------------------------------------------------
 String getTimerDate(DateTime d) {
-  return String(d.year()) + "/" + pad(String(d.month())) + "/" + pad(String(d.day())) + "  " + pad(String(d.hour())) + ":" + pad(String(d.minute()));
+  return pad(String(d.day())) + "/" + pad(String(d.month())) + "/" + String(d.year()) + "  " + pad(String(d.hour())) + ":" + pad(String(d.minute()));
 }
 
 
