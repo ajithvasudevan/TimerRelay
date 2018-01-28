@@ -263,11 +263,11 @@ void calcUnixTime(int p)
     unixstart1 = startdt1.unixtime();  
     unixend1   = enddt1.unixtime();
     if(unixend1 < unixstart1) unixend1 += (60 * 60 * 24);
-  
-    while(now.unixtime() > unixend1 && now.unixtime() > unixstart1) {
+    if(unixend1 <= now.unixtime()) {
       unixstart1 += (60 * 60 * 24);
       unixend1 += (60 * 60 * 24);
     }
+  
     DateTime s1 = DateTime(unixstart1);
     DateTime e1 = DateTime(unixend1);
   
@@ -283,11 +283,10 @@ void calcUnixTime(int p)
     unixstart2 = startdt2.unixtime();  
     unixend2   = enddt2.unixtime();
     if(unixend2 < unixstart2) unixend2 += (60 * 60 * 24);
-  
-    while(now.unixtime() > unixend2) {
+    if(unixend2 <= now.unixtime()) {
       unixstart2 += (60 * 60 * 24);
       unixend2 += (60 * 60 * 24);
-    }
+    }    
   
     DateTime s2 = DateTime(unixstart2);
     DateTime e2 = DateTime(unixend2);
