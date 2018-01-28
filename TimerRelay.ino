@@ -11,8 +11,13 @@ ESP8266WebServer server ( 80 );
 //----------------------------------------------------------------------------
 
 RTC_DS3231 rtc;
- 
-//char daysOfTheWeek[7][12] = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
+
+const byte TIMER_MODE = 1; 
+const byte MANUAL_MODE = 2;
+byte MODE1 = TIMER_MODE;
+byte MODE2 = TIMER_MODE;
+byte STATE1 = 0;
+byte STATE2 = 0;
 
 int starthr1 =  18;
 int startmin1 = 0;
@@ -42,14 +47,47 @@ void handleRoot() {
   DateTime e1 = DateTime(unixend1);
   DateTime s2 = DateTime(unixstart2);
   DateTime e2 = DateTime(unixend2);
-  String nextStart1 = getTimerDate(s1);
-  String nextEnd1 = getTimerDate(e1);
-  String nextStart2 = getTimerDate(s2);
-  String nextEnd2 = getTimerDate(e2);
+  String nextStart1 = getDateString(s1);
+  String nextEnd1 = getDateString(e1);
+  String nextStart2 = getDateString(s2);
+  String nextEnd2 = getDateString(e2);
   
   server.send(200, "text/html",
     "<html><head><title>Timer Relay</title>"
     "<script>"
+    "var server = '192.168.4.1';"
+    "var xhttp = new XMLHttpRequest();"
+    "xhttp.onreadystatechange = function() {"
+    "    if (this.readyState == 4 && this.status == 200) {"
+    "       var resp = xhttp.responseText.split(',');"
+    "       document.getElementById('mode1').innerHTML = resp[0];"
+    "       document.getElementById('mode2').innerHTML = resp[1];"
+    "       if(resp[2] == '0') document.getElementsByName('r1')[0].checked = true;"
+    "       else document.getElementsByName('r1')[1].checked = true;"
+    "       if(resp[3] == '0') document.getElementsByName('r2')[0].checked = true;"
+    "       else document.getElementsByName('r2')[1].checked = true;"
+    "    }"
+    "};"
+    "function manual(chk) {"
+    "	xhttp.open('GET', 'http://'+ server +'/manual?' + chk.name + '=' + chk.value, true);"
+    "	xhttp.send();"
+    "}"
+    "function setTimer(n) {"
+    "var url = 'http://'+ server + '/timer?n=' + n;"
+    "if(n == 1) {"
+    "url += '&sh1=' + document.getElementById('sh1').value;"
+    "url += '&sm1=' + document.getElementById('sm1').value;"
+    "url += '&eh1=' + document.getElementById('eh1').value;"
+    "url += '&em1=' + document.getElementById('em1').value;"
+    "} else {"
+    "url += '&sh2=' + document.getElementById('sh2').value;"
+    "url += '&sm2=' + document.getElementById('sm2').value;"
+    "url += '&eh2=' + document.getElementById('eh2').value;"
+    "url += '&em2=' + document.getElementById('em2').value;"
+    "}"
+    "	xhttp.open('GET', url, true);"
+    "	xhttp.send();"
+    "}"
     "function setNow() { "
       "var dt = new Date(); "
       "document.forms[0].y.value = dt.getFullYear(); "
@@ -71,14 +109,16 @@ void handleRoot() {
       "document.forms[0].h.value = pad(document.forms[0].h.value, 2);"
       "document.forms[0].m.value = pad(document.forms[0].m.value, 2);"
       "document.forms[0].s.value = pad(document.forms[0].s.value, 2);"
-      "document.forms[1].sh1.value = pad(document.forms[1].sh1.value, 2);"
-      "document.forms[1].sm1.value = pad(document.forms[1].sm1.value, 2);"
-      "document.forms[1].eh1.value = pad(document.forms[1].eh1.value, 2);"
-      "document.forms[1].em1.value = pad(document.forms[1].em1.value, 2);"
-      "document.forms[1].sh2.value = pad(document.forms[1].sh2.value, 2);"
-      "document.forms[1].sm2.value = pad(document.forms[1].sm2.value, 2);"
-      "document.forms[1].eh2.value = pad(document.forms[1].eh2.value, 2);"
-      "document.forms[1].em2.value = pad(document.forms[1].em2.value, 2);"
+      "document.getElementById('sh1').value = pad(document.getElementById('sh1').value, 2);"
+      "document.getElementById('sm1').value = pad(document.getElementById('sm1').value, 2);"
+      "document.getElementById('eh1').value = pad(document.getElementById('eh1').value, 2);"
+      "document.getElementById('em1').value = pad(document.getElementById('em1').value, 2);"
+      "document.getElementById('sh2').value = pad(document.getElementById('sh2').value, 2);"
+      "document.getElementById('sm2').value = pad(document.getElementById('sm2').value, 2);"
+      "document.getElementById('eh2').value = pad(document.getElementById('eh2').value, 2);"
+      "document.getElementById('em2').value = pad(document.getElementById('em2').value, 2);"
+      "xhttp.open('GET', 'http://'+ server +'/manual', true);"
+      "xhttp.send();"
     "} "
     "</script>"
     "</head><body onLoad='init()'><a href='/'><h2>Timer Relay</h2></a>"
@@ -96,23 +136,60 @@ void handleRoot() {
       " <input type='submit' value='Set Date and Time'>&nbsp;&nbsp;&nbsp;&nbsp;<input type='button' value='Set to Current Date-Time' onClick='setNow()'><BR><BR>"
     "</form>"
     "<HR>"
-    "<form method='POST' action='/timer' enctype='multipart/form-data'>"
-    "<pre>Set Timer1: <BR>Start: <input type='number' name='sh1' min='0' max='23' size='2' value='"+ starthr1 +"' placeholder='hr'> : "
-    "<input type='number' name='sm1' min='0' max='59' size='2' value='"+ startmin1 +"' placeholder='min'>&nbsp;&nbsp;"+ nextStart1 +"<BR>"
-    "End  : <input type='number' name='eh1' min='0' max='23' size='2' value='"+ endhr1 +"' placeholder='hr'> : "
-    "<input type='number' name='em1' min='0' max='59' size='2' value='"+ endmin1 +"' placeholder='min'>&nbsp;&nbsp;"+ nextEnd1 +"<BR><BR>"
-    "Set Timer2: <BR>Start: <input type='number' name='sh2' min='0' max='23' size='2' value='"+ starthr2 +"' placeholder='hr'> : "
-    "<input type='number' name='sm2' min='0' max='59' size='2' value='"+ startmin2 +"' placeholder='min'>&nbsp;&nbsp;"+ nextStart2 +"<BR>"
-    "End  : <input type='number' name='eh2' min='0' max='23' size='2' value='"+ endhr2 +"' placeholder='hr'> : "
-    "<input type='number' name='em2' min='0' max='59' size='2' value='"+ endmin2 +"' placeholder='min'>&nbsp;&nbsp;"+ nextEnd2 +"</pre>"
-    " <input type='submit' value='Set Timers'>"
-    "</form>"
+    "<pre><table border='0'>"
+    "<tr><td>Relay 1:&nbsp;&nbsp; </td><td><input type='radio' name='r1' value='0' checked onclick='manual(this);'> OFF  &nbsp;&nbsp;&nbsp;</td><td><input type='radio' name='r1' value='1' onclick='manual(this);'> ON &nbsp;&nbsp;&nbsp;</td><td>&nbsp;&nbsp;Mode:&nbsp;</td><td id='mode1' style='color:red'>TIMER</td></tr>"
+    "<tr><td>Relay 2:&nbsp;&nbsp; </td><td><input type='radio' name='r2' value='0' checked onclick='manual(this);'> OFF  &nbsp;&nbsp;&nbsp;</td><td><input type='radio' name='r2' value='1' onclick='manual(this);'> ON &nbsp;&nbsp;&nbsp;</td><td>&nbsp;&nbsp;Mode:&nbsp;</td><td id='mode2' style='color:red'>TIMER</td></tr>"
+    "</table></pre><HR>"
+    "<pre>Set Timer1: <BR>Start: <input type='number' name='sh1' id='sh1' min='0' max='23' size='2' value='"+ starthr1 +"' placeholder='hr'> : "
+    "<input type='number' name='sm1' id='sm1' min='0' max='59' size='2' value='"+ startmin1 +"' placeholder='min'>&nbsp;&nbsp;"+ nextStart1 +"<BR>"
+    "End  : <input type='number' name='eh1' id='eh1' min='0' max='23' size='2' value='"+ endhr1 +"' placeholder='hr'> : "
+    "<input type='number' name='em1' id='em1' min='0' max='59' size='2' value='"+ endmin1 +"' placeholder='min'>&nbsp;&nbsp;"+ nextEnd1 +"<BR><BR>"
+    "<input type='button' value='Set Timer 1' onClick='setTimer(1)'><BR><HR>"
+    "Set Timer2: <BR>Start: <input type='number' name='sh2' id='sh2' min='0' max='23' size='2' value='"+ starthr2 +"' placeholder='hr'> : "
+    "<input type='number' name='sm2' id='sm2' min='0' max='59' size='2' value='"+ startmin2 +"' placeholder='min'>&nbsp;&nbsp;"+ nextStart2 +"<BR>"
+    "End  : <input type='number' name='eh2' id='eh2' min='0' max='23' size='2' value='"+ endhr2 +"' placeholder='hr'> : "
+    "<input type='number' name='em2' id='em2' min='0' max='59' size='2' value='"+ endmin2 +"' placeholder='min'>&nbsp;&nbsp;"+ nextEnd2 +"</pre>"
+    "<input type='button' value='Set Timer 2' onClick='setTimer(2)'>"
+    "<hr>"
     "</body></html>");
 }
 //----------------------------------------------------------------------------
-void handleSetStartEndTimes() {
-  Serial.println("In handleSetTime( )");
+void handleManualONOFF() {
+  Serial.println("In handleManualONOFF( )");
   for (uint16_t i = 0; i < server.args(); i++) {
+    if (server.argName(i) == "r1") {
+      MODE1 =  MANUAL_MODE;
+      EEPROM.write(10, MODE1);
+      Serial.print("MODE1 set to "); Serial.println(MODE1);
+      String r1 = server.arg(i);
+      STATE1 = atoi(r1.c_str());
+      EEPROM.write(12, STATE1);
+    }
+    if (server.argName(i) == "r2") {
+      MODE2 =  MANUAL_MODE;
+      EEPROM.write(11, MODE2);
+      Serial.print("MODE2 set to "); Serial.println(MODE2);
+      String r2 = server.arg(i);
+      STATE2 = atoi(r2.c_str());
+      EEPROM.write(13, STATE2);
+    }
+  }
+  String strMode1 = "TIMER";
+  String strMode2 = "TIMER";
+  if(MODE1 == MANUAL_MODE) strMode1 = "MANUAL";
+  if(MODE2 == MANUAL_MODE) strMode2 = "MANUAL";
+  String resp = strMode1 + "," + strMode2 + "," + String(STATE1) + "," + String(STATE2);
+  server.send(200, "text/html", resp);
+}
+//----------------------------------------------------------------------------
+void handleSetStartEndTimes() {
+  int n = 0;
+  Serial.println("In handleSetStartEndTimes( )"); 
+  for (uint16_t i = 0; i < server.args(); i++) {
+    if (server.argName(i) == "n") {
+      String nStr = server.arg(i);
+      n = atoi(nStr.c_str());
+    }
     if (server.argName(i) == "sh1") {
       String sh1 = server.arg(i);
       starthr1 = atoi(sh1.c_str());
@@ -146,7 +223,10 @@ void handleSetStartEndTimes() {
       endmin2 = atoi(em2.c_str());
     }
   }
-  
+  if(n == 1) {  MODE1 =  TIMER_MODE;  EEPROM.write(10, MODE1); Serial.print("MODE1 set to "); Serial.println(MODE1); }
+  else { MODE2 = TIMER_MODE; EEPROM.write(11, MODE2);  Serial.print("MODE2 set to "); Serial.println(MODE2); }
+
+
   EEPROM.write(0, starthr1);
   EEPROM.write(1, startmin1);
   EEPROM.write(2, endhr1);
@@ -156,13 +236,19 @@ void handleSetStartEndTimes() {
   EEPROM.write(6, endhr2);
   EEPROM.write(7, endmin2);
   EEPROM.commit();
-  calcUnixTime(0);
-  handleRoot();
+  calcUnixTime();
+  setStates();
+  String strMode1 = "TIMER";
+  String strMode2 = "TIMER";
+  if(MODE1 == MANUAL_MODE) strMode1 = "MANUAL";
+  if(MODE2 == MANUAL_MODE) strMode2 = "MANUAL";
+  String resp = strMode1 + "," + strMode2 + "," + String(STATE1) + "," + String(STATE2);
+  server.send(200, "text/html", resp);
 }
 //----------------------------------------------------------------------------
 void handleSetTime() {
   Serial.println("In handleSetTime( )");
-  int y, M, d, h, m, s;
+  int y, M, d, h, m, s=0;
   for (uint16_t i = 0; i < server.args(); i++) {
     if (server.argName(i) == "y") {
       String y1 = server.arg(i);
@@ -191,39 +277,10 @@ void handleSetTime() {
     // Year, month, date, hour, min, sec
     rtc.adjust(DateTime(y, M, d, h, m, s));
   }
-  calcUnixTime(0);
+  calcUnixTime();
   handleRoot();
 }
 //----------------------------------------------------------------------------
-/*
-
-// Sample code for tokenizing a String
-
-      String TIME = server.arg(i);
-      Serial.print("New Start Time1 received: "); Serial.println(TIME);
-      char buf[TIME.length()+1];
-      TIME.toCharArray(buf, TIME.length()+1);
-      char *p = buf;
-      char *str;
-      int y,M,d,h,m,s = 0, j = 0;
-      while ((str = strtok_r(p, ",", &p)) != NULL) {// delimiter is the comma
-        if(j == 0) y = atoi(str);
-        if(j == 1) M = atoi(str);
-        if(j == 2) d = atoi(str);
-        if(j == 3) h = atoi(str);
-        if(j == 4) m = atoi(str);
-        if(j == 5) s = atoi(str);
-        j++;
-      }
-
-*/
-//----------------------------------------------------------------------------
-String pad(String v) {
-  if(v.length()<2) return ("0" + v);
-  else return v;
-}
-
-
 void handleNotFound() {
   String message = "File Not Found\n\n";
   message += "URI: ";
@@ -252,61 +309,57 @@ void setup_wifi() {
 
 //----------------------------------------------------------------------------
 
-void calcUnixTime(int p)
+void calcUnixTime()
 {
   DateTime now = rtc.now();
 
-  if(p == 0 || p == 1) {
-    DateTime startdt1 = DateTime(now.year(), now.month(), now.day(), starthr1, startmin1);
-    DateTime enddt1   = DateTime(now.year(), now.month(), now.day(), endhr1,   endmin1);
-  
-    unixstart1 = startdt1.unixtime();  
-    unixend1   = enddt1.unixtime();
-    if(unixend1 < unixstart1) unixend1 += (60 * 60 * 24);
-    if(unixend1 <= now.unixtime()) {
-      unixstart1 += (60 * 60 * 24);
-      unixend1 += (60 * 60 * 24);
-    }
-  
-    DateTime s1 = DateTime(unixstart1);
-    DateTime e1 = DateTime(unixend1);
-  
-    Serial.print("Now : "); printDate(now); Serial.println("");
-    Serial.print("Sta1: "); printDate(s1);
-    Serial.print("End1: "); printDate(e1); Serial.println("");
+  DateTime startdt1 = DateTime(now.year(), now.month(), now.day(), starthr1, startmin1);
+  DateTime enddt1   = DateTime(now.year(), now.month(), now.day(), endhr1,   endmin1);
+
+  unixstart1 = startdt1.unixtime();  
+  unixend1   = enddt1.unixtime();
+  if(unixend1 < unixstart1) unixend1 += (60 * 60 * 24);
+  if(unixend1 <= now.unixtime()) {
+    unixstart1 += (60 * 60 * 24);
+    unixend1 += (60 * 60 * 24);
   }
 
-  if(p == 0 || p == 2) {
-    DateTime startdt2 = DateTime(now.year(), now.month(), now.day(), starthr2, startmin2);
-    DateTime enddt2   = DateTime(now.year(), now.month(), now.day(), endhr2,   endmin2);
-  
-    unixstart2 = startdt2.unixtime();  
-    unixend2   = enddt2.unixtime();
-    if(unixend2 < unixstart2) unixend2 += (60 * 60 * 24);
-    if(unixend2 <= now.unixtime()) {
-      unixstart2 += (60 * 60 * 24);
-      unixend2 += (60 * 60 * 24);
-    }    
-  
-    DateTime s2 = DateTime(unixstart2);
-    DateTime e2 = DateTime(unixend2);
-  
-    Serial.print("Now : "); printDate(now); Serial.println("");
-    Serial.print("Sta2: "); printDate(s2);
-    Serial.print("End2: "); printDate(e2);
-  }
+  DateTime s1 = DateTime(unixstart1);
+  DateTime e1 = DateTime(unixend1);
+
+  Serial.print("Now : "); Serial.println(getDateString(now));
+  Serial.print("Sta1: "); Serial.println(getDateString(s1));
+  Serial.print("End1: "); Serial.println(getDateString(e1));
+
+  DateTime startdt2 = DateTime(now.year(), now.month(), now.day(), starthr2, startmin2);
+  DateTime enddt2   = DateTime(now.year(), now.month(), now.day(), endhr2,   endmin2);
+
+  unixstart2 = startdt2.unixtime();  
+  unixend2   = enddt2.unixtime();
+  if(unixend2 < unixstart2) unixend2 += (60 * 60 * 24);
+  if(unixend2 <= now.unixtime()) {
+    unixstart2 += (60 * 60 * 24);
+    unixend2 += (60 * 60 * 24);
+  }    
+
+  DateTime s2 = DateTime(unixstart2);
+  DateTime e2 = DateTime(unixend2);
+
+  Serial.print("Now : "); Serial.println(getDateString(now)); 
+  Serial.print("Sta2: "); Serial.println(getDateString(s2));
+  Serial.print("End2: "); Serial.println(getDateString(e2));
+
 }
+
 //----------------------------------------------------------------------------
-void printDate(DateTime d) {
-  Serial.print(d.year()); Serial.print("/"); Serial.print(d.month()); Serial.print("/");
-  Serial.print(d.day()); Serial.print("  "); Serial.print(d.hour()); Serial.print(":");
-  Serial.print(d.minute()); Serial.print(":"); Serial.println(d.second());
-}
-//----------------------------------------------------------------------------
-String getTimerDate(DateTime d) {
+String getDateString(DateTime d) {
   return pad(String(d.day())) + "/" + pad(String(d.month())) + "/" + String(d.year()) + "  " + pad(String(d.hour())) + ":" + pad(String(d.minute()));
 }
-
+//----------------------------------------------------------------------------
+String pad(String v) {
+  if(v.length()<2) return ("0" + v);
+  else return v;
+}
 
 //----------------------------------------------------------------------------
 
@@ -353,90 +406,110 @@ void setup () {
   endmin2 = EEPROM.read(7);
   currstate1 = EEPROM.read(8);
   currstate2 = EEPROM.read(9);
+  MODE1 = EEPROM.read(10);
+  MODE2 = EEPROM.read(11);
+  STATE1 = EEPROM.read(12);
+  STATE2 = EEPROM.read(13);
   
-  calcUnixTime(0);
+  calcUnixTime();
 //----------------------------------------------------------------------------
   server.on("/", handleRoot);
   server.on("/t", handleSetTime);
-//  server.on("/t1", handleSetTime1);
+  server.on("/manual", handleManualONOFF);
   server.on("/timer", handleSetStartEndTimes);
   server.onNotFound(handleNotFound);
   server.begin();
   Serial.println("HTTP server started");
 }
 //----------------------------------------------------------------------------
+void setStates() {
+  DateTime now = rtc.now();
+  uint32_t unixtime =  now.unixtime();   
+
+  prevstate1 = currstate1;
+  prevstate2 = currstate2;
+
+  if(MODE1 == TIMER_MODE) {
+    if(unixtime >= unixstart1 && unixtime < unixend1) { 
+      digitalWrite( D3, HIGH);
+      currstate1 = HIGH;
+      STATE1 = 1; 
+    }
+    else { 
+      digitalWrite( D3, LOW); 
+      currstate1 = LOW; 
+      STATE1 = 0;
+    }
+    EEPROM.write(12, STATE1);
+    EEPROM.write(8, currstate1);
+  }
+  else digitalWrite( D3, STATE1);
+
+  if(MODE2 == TIMER_MODE) {
+    if(unixtime >= unixstart2 && unixtime < unixend2) { 
+      digitalWrite( D4, HIGH); 
+      currstate2 = HIGH;
+      STATE2 = 1; 
+    }
+    else { 
+      digitalWrite( D4, LOW); 
+      currstate2 = LOW; 
+      STATE2 = 0;
+    }
+    EEPROM.write(13, STATE2);
+    EEPROM.write(9, currstate2);
+  }
+  else digitalWrite( D4, STATE2);
+
+}
+
+
 
 void loop () {
     server.handleClient();
-    DateTime now = rtc.now();
-    uint32_t unixtime =  now.unixtime();   
-    
-    
- /*
-    Serial.print(now.year(), DEC);
-    Serial.print('/');
-    Serial.print(now.month(), DEC);
-    Serial.print('/');
-    Serial.print(now.day(), DEC);
-    Serial.print(" (");
-    Serial.print(daysOfTheWeek[now.dayOfTheWeek()]);
-    Serial.print(") ");
-    Serial.print(now.hour(), DEC);
-    Serial.print(':');
-    Serial.print(now.minute(), DEC);
-    Serial.print(':');
-    Serial.print(now.second(), DEC);
-    Serial.println();
-*/
 
-/* 
-    Serial.print(" since midnight 1/1/1970 = ");
-    Serial.print(now.unixtime());
-    Serial.print("s = ");
-    Serial.print(now.unixtime() / 86400L);
-    Serial.println("d");
- 
-  // calculate a date which is 7 days and 30 seconds into the future
-    DateTime future (now + TimeSpan(7,12,30,6));
- 
-    Serial.print(" now + 7d + 30s: ");
-    Serial.print(future.year(), DEC);
-    Serial.print('/');
-    Serial.print(future.month(), DEC);
-    Serial.print('/');
-    Serial.print(future.day(), DEC);
-    Serial.print(' ');
-    Serial.print(future.hour(), DEC);
-    Serial.print(':');
-    Serial.print(future.minute(), DEC);
-    Serial.print(':');
-    Serial.print(future.second(), DEC);
-    Serial.println();
- 
-    Serial.println();
-*/
-    prevstate1 = currstate1;
-    if(unixtime >= unixstart1 && unixtime < unixend1) { digitalWrite( D3, HIGH); currstate1 = HIGH; }
-    else { digitalWrite( D3, LOW); currstate1 = LOW; }
+    setStates(); 
+
     if(prevstate1 == HIGH && currstate1 == LOW) {
       Serial.println("Advancing unixtimes by 24 hrs for Timer1");
       unixstart1 += (60 * 60 * 24);
       unixend1   += (60 * 60 * 24);
-//        calcUnixTime(1);
     }
-
-    prevstate2 = currstate2;
-    if(unixtime >= unixstart2 && unixtime < unixend2) { digitalWrite( D4, HIGH); currstate2 = HIGH; }
-    else { digitalWrite( D4, LOW); currstate2 = LOW; }
     if(prevstate2 == HIGH && currstate2 == LOW) {
       Serial.println("Advancing unixtimes by 24 hrs for Timer2");
       unixstart2 += (60 * 60 * 24);
       unixend2   += (60 * 60 * 24);
-//      calcUnixTime(2);
     }
 
     EEPROM.write(8, currstate1);
     EEPROM.write(9, currstate2);
     EEPROM.commit();
+
     delay(100);
 }
+
+
+//----------------------------------------------------------------------------
+/*
+
+// Sample code for tokenizing a String
+
+      String TIME = server.arg(i);
+      Serial.print("New Start Time1 received: "); Serial.println(TIME);
+      char buf[TIME.length()+1];
+      TIME.toCharArray(buf, TIME.length()+1);
+      char *p = buf;
+      char *str;
+      int y,M,d,h,m,s = 0, j = 0;
+      while ((str = strtok_r(p, ",", &p)) != NULL) {// delimiter is the comma
+        if(j == 0) y = atoi(str);
+        if(j == 1) M = atoi(str);
+        if(j == 2) d = atoi(str);
+        if(j == 3) h = atoi(str);
+        if(j == 4) m = atoi(str);
+        if(j == 5) s = atoi(str);
+        j++;
+      }
+
+*/
+//----------------------------------------------------------------------------
