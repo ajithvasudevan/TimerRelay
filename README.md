@@ -15,3 +15,7 @@ The circuit can be powered either directly by a 5V DC power source as shown in t
 ## Schematic
 
 ![Schematic](https://github.com/ajithvasudevan/TimerRelay/raw/master/TimerRelay.png)
+
+
+## Prototype
+![Prototype](https://github.com/ajithvasudevan/TimerRelay/raw/master/TimerRelay%20-%20Prototype.jpg)
