@@ -34,24 +34,6 @@ int currstate1 = 0, prevstate1 = 0, currstate2 = 0, prevstate2 = 0;
 
 //----------------------------------------------------------------------------
 void handleRoot() {
-  DateTime now = rtc.now();
-  String y = String(now.year(), DEC);
-  String M = pad(String(now.month(), DEC));
-  String d = pad(String(now.day(), DEC));
-  String h = pad(String(now.hour(), DEC));
-  String m = pad(String(now.minute(), DEC));
-  String s = pad(String(now.second(), DEC));
-  String currdate = d + " / " + M + " / " + y;
-  String currtime = h + " : " + m + " : " + s;
-  DateTime s1 = DateTime(unixstart1);
-  DateTime e1 = DateTime(unixend1);
-  DateTime s2 = DateTime(unixstart2);
-  DateTime e2 = DateTime(unixend2);
-  String nextStart1 = getDateString(s1);
-  String nextEnd1 = getDateString(e1);
-  String nextStart2 = getDateString(s2);
-  String nextEnd2 = getDateString(e2);
-  
   server.send(200, "text/html",
     "<html><head><title>Timer Relay</title>"
     "<script>"
@@ -66,6 +48,26 @@ void handleRoot() {
     "       else document.getElementsByName('r1')[1].checked = true;"
     "       if(resp[3] == '0') document.getElementsByName('r2')[0].checked = true;"
     "       else document.getElementsByName('r2')[1].checked = true;"
+    "       document.getElementById('sh1').value = pad(resp[4], 2);"
+    "       document.getElementById('sm1').value = pad(resp[5], 2);"
+    "       document.getElementById('eh1').value = pad(resp[6], 2);"
+    "       document.getElementById('em1').value = pad(resp[7], 2);"
+    "       document.getElementById('sh2').value = pad(resp[8], 2);"
+    "       document.getElementById('sm2').value = pad(resp[9], 2);"
+    "       document.getElementById('eh2').value = pad(resp[10], 2);"
+    "       document.getElementById('em2').value = pad(resp[11], 2);"
+    "       document.getElementById('ns1').innerHTML = pad(resp[12], 2);"
+    "       document.getElementById('ne1').innerHTML = pad(resp[13], 2);"
+    "       document.getElementById('ns2').innerHTML = pad(resp[14], 2);"
+    "       document.getElementById('ne2').innerHTML = pad(resp[15], 2);"
+    "       document.getElementById('d').value = pad(resp[16], 2);"
+    "       document.getElementById('M').value = pad(resp[17], 2);"
+    "       document.getElementById('y').value = pad(resp[18], 2);"
+    "       document.getElementById('h').value = pad(resp[19], 2);"
+    "       document.getElementById('m').value = pad(resp[20], 2);"
+    "       document.getElementById('s').value = pad(resp[21], 2);"
+    "       document.getElementById('cd').innerHTML = resp[22];"
+    "       document.getElementById('ct').innerHTML = resp[23];"
     "    }"
     "};"
     "function manual(chk) {"
@@ -88,15 +90,26 @@ void handleRoot() {
     "	xhttp.open('GET', url, true);"
     "	xhttp.send();"
     "}"
+    "function setDateTime() { "
+      "var d = document.getElementById('d').value;"
+      "var M = document.getElementById('M').value;"
+      "var y = document.getElementById('y').value;"
+      "var h = document.getElementById('h').value;"
+      "var m = document.getElementById('m').value;"
+      "var s = document.getElementById('s').value;"
+
+      "var url = 'http://'+ server +'/t?d=' + d + '&M=' + M + '&y=' + y;"
+      "url += '&h=' + h + '&m=' + m + '&s=' + s;"
+      "xhttp.open('GET', url, true);"
+      "xhttp.send();"      
+    "} "
     "function setNow() { "
       "var dt = new Date(); "
-      "document.forms[0].y.value = dt.getFullYear(); "
-      "document.forms[0].M.value = (dt.getMonth() + 1); "
-      "document.forms[0].d.value = dt.getDate(); "
-      "document.forms[0].h.value = dt.getHours(); "
-      "document.forms[0].m.value = dt.getMinutes(); "
-      "document.forms[0].s.value = dt.getSeconds(); "
-      "document.forms[0].submit(); "
+      "var url = 'http://'+ server +'/t?d=' + dt.getDate();"
+      "url += '&M=' + (dt.getMonth() + 1) + '&y=' + dt.getFullYear();"
+      "url += '&h=' + dt.getHours() + '&m=' + dt.getMinutes() + '&s=' + dt.getSeconds();"
+      "xhttp.open('GET', url, true);"
+      "xhttp.send();"      
     "} "
     "function pad(num, size) {"
         "var s = num+'';"
@@ -104,51 +117,45 @@ void handleRoot() {
         "return s;"
     "} "
     "function init() {"
-      "document.forms[0].M.value = pad(document.forms[0].M.value, 2);"
-      "document.forms[0].d.value = pad(document.forms[0].d.value, 2);"
-      "document.forms[0].h.value = pad(document.forms[0].h.value, 2);"
-      "document.forms[0].m.value = pad(document.forms[0].m.value, 2);"
-      "document.forms[0].s.value = pad(document.forms[0].s.value, 2);"
-      "document.getElementById('sh1').value = pad(document.getElementById('sh1').value, 2);"
-      "document.getElementById('sm1').value = pad(document.getElementById('sm1').value, 2);"
-      "document.getElementById('eh1').value = pad(document.getElementById('eh1').value, 2);"
-      "document.getElementById('em1').value = pad(document.getElementById('em1').value, 2);"
-      "document.getElementById('sh2').value = pad(document.getElementById('sh2').value, 2);"
-      "document.getElementById('sm2').value = pad(document.getElementById('sm2').value, 2);"
-      "document.getElementById('eh2').value = pad(document.getElementById('eh2').value, 2);"
-      "document.getElementById('em2').value = pad(document.getElementById('em2').value, 2);"
       "xhttp.open('GET', 'http://'+ server +'/manual', true);"
       "xhttp.send();"
     "} "
     "</script>"
     "</head><body onLoad='init()'><a href='/'><h2>Timer Relay</h2></a>"
-    "<pre>Unixtime:     "+ String(now.unixtime()) +"<BR>"
-    "Current Date: " + currdate + "<BR>"+  "Current Time: " + currtime + "<BR></pre>"
+    "<pre><BR>"
+    "Current Date: <span id='cd'>currdate</span><BR>"
+    "Current Time: <span id='ct'>currtime</span><BR>"
     "<HR>"
-    "<form method='POST' action='/t' enctype='multipart/form-data'>"
     "<pre>Set Date and Time: "
-      "<BR>Date: <input type='number' name='d' min='1' max='31' size='2' value='"+ d +"'  placeholder='date'> / "
-      "<input type='number' name='M' min='1' max='12' size='2' value='"+ M +"'  placeholder='month'> / "
-      "<input type='number' name='y' min='2000' max='2165' size='2' value='"+ y +"'  placeholder='year'><BR>"
-      "Time: <input type='number' name='h' min='0' max='23' size='2' value='"+ h +"'  placeholder='hr'> : "
-      "<input type='number' name='m' min='0' max='59' size='2' value='"+ m +"'  placeholder='min'> : "
-      "<input type='number' name='s' min='0' max='59' size='2' value='"+ s +"'  placeholder='sec'></pre>"
-      " <input type='submit' value='Set Date and Time'>&nbsp;&nbsp;&nbsp;&nbsp;<input type='button' value='Set to Current Date-Time' onClick='setNow()'><BR><BR>"
-    "</form>"
+      "<BR>Date: <input type='number' name='d' id='d' min='1' max='31' size='2' value=''  placeholder='date'> / "
+      "<input type='number' name='M' id='M' min='1' max='12' size='2' value=''  placeholder='month'> / "
+      "<input type='number' name='y' id='y' min='2000' max='2165' size='2' value=''  placeholder='year'><BR>"
+      "Time: <input type='number' id='h' name='h' min='0' max='23' size='2' value=''  placeholder='hr'> : "
+      "<input type='number' name='m' id='m' min='0' max='59' size='2' value=''  placeholder='min'> : "
+      "<input type='number' name='s' id='s' min='0' max='59' size='2' value=''  placeholder='sec'></pre>"
+      " <input type='button' value='Set Date and Time' onClick='setDateTime()'>&nbsp;&nbsp;&nbsp;&nbsp;<input type='button' value='Set to Current Date-Time' onClick='setNow()'><BR><BR>"
     "<HR>"
     "<pre><table border='0'>"
-    "<tr><td>Relay 1:&nbsp;&nbsp; </td><td><input type='radio' name='r1' value='0' checked onclick='manual(this);'> OFF  &nbsp;&nbsp;&nbsp;</td><td><input type='radio' name='r1' value='1' onclick='manual(this);'> ON &nbsp;&nbsp;&nbsp;</td><td>&nbsp;&nbsp;Mode:&nbsp;</td><td id='mode1' style='color:red'>TIMER</td></tr>"
-    "<tr><td>Relay 2:&nbsp;&nbsp; </td><td><input type='radio' name='r2' value='0' checked onclick='manual(this);'> OFF  &nbsp;&nbsp;&nbsp;</td><td><input type='radio' name='r2' value='1' onclick='manual(this);'> ON &nbsp;&nbsp;&nbsp;</td><td>&nbsp;&nbsp;Mode:&nbsp;</td><td id='mode2' style='color:red'>TIMER</td></tr>"
+    "<tr><td>Relay 1 </td><td><input type='radio' name='r1' value='0' checked onclick='manual(this);'> OFF  &nbsp;</td><td><input type='radio' name='r1' value='1' onclick='manual(this);'> ON &nbsp;</td><td>&nbsp;&nbsp;Mode:&nbsp;</td><td id='mode1' style='color:red'>TIMER</td></tr>"
+    "<tr><td>Relay 2 </td><td><input type='radio' name='r2' value='0' checked onclick='manual(this);'> OFF  &nbsp;</td><td><input type='radio' name='r2' value='1' onclick='manual(this);'> ON &nbsp;</td><td>&nbsp;&nbsp;Mode:&nbsp;</td><td id='mode2' style='color:red'>TIMER</td></tr>"
     "</table></pre><HR>"
-    "<pre>Set Timer1: <BR>Start: <input type='number' name='sh1' id='sh1' min='0' max='23' size='2' value='"+ starthr1 +"' placeholder='hr'> : "
-    "<input type='number' name='sm1' id='sm1' min='0' max='59' size='2' value='"+ startmin1 +"' placeholder='min'>&nbsp;&nbsp;"+ nextStart1 +"<BR>"
-    "End  : <input type='number' name='eh1' id='eh1' min='0' max='23' size='2' value='"+ endhr1 +"' placeholder='hr'> : "
-    "<input type='number' name='em1' id='em1' min='0' max='59' size='2' value='"+ endmin1 +"' placeholder='min'>&nbsp;&nbsp;"+ nextEnd1 +"<BR><BR>"
-    "<input type='button' value='Set Timer 1' onClick='setTimer(1)'><BR><HR>"
-    "Set Timer2: <BR>Start: <input type='number' name='sh2' id='sh2' min='0' max='23' size='2' value='"+ starthr2 +"' placeholder='hr'> : "
-    "<input type='number' name='sm2' id='sm2' min='0' max='59' size='2' value='"+ startmin2 +"' placeholder='min'>&nbsp;&nbsp;"+ nextStart2 +"<BR>"
-    "End  : <input type='number' name='eh2' id='eh2' min='0' max='23' size='2' value='"+ endhr2 +"' placeholder='hr'> : "
-    "<input type='number' name='em2' id='em2' min='0' max='59' size='2' value='"+ endmin2 +"' placeholder='min'>&nbsp;&nbsp;"+ nextEnd2 +"</pre>"
+    "<pre>"
+    "<table>"
+    "<tr><td colspan='5'>Timer1: </td></tr>"
+    "<tr><td>Start: </td><td><input type='number' name='sh1' id='sh1' min='0' max='23' size='2' value='starthr1' placeholder='hr'></td><td> : </td>"
+    "<td><input type='number' name='sm1' id='sm1' min='0' max='59' size='2' value='startmin1' placeholder='min'>&nbsp;&nbsp;</td><td id='ns1'>nextStart1</td></tr>"
+    "<tr><td>End  : </td><td><input type='number' name='eh1' id='eh1' min='0' max='23' size='2' value='endhr1  ' placeholder='hr'></td><td> : </td>"
+    "<td><input type='number' name='em1' id='em1' min='0' max='59' size='2' value='endmin1  ' placeholder='min'>&nbsp;&nbsp;</td><td id='ne1'>nextEnd1</td></tr>"
+    "</table>"
+    "<input type='button' value='Set Timer 1' onClick='setTimer(1)'>"
+    "<BR><HR>"
+    "<table>"
+    "<tr><td colspan='5'>Timer2: </td></tr>"
+    "<tr><td>Start: </td><td><input type='number' name='sh2' id='sh2' min='0' max='23' size='2' value='starthr2' placeholder='hr'></td><td> : </td>"
+    "<td><input type='number' name='sm2' id='sm2' min='0' max='59' size='2' value='startmin2' placeholder='min'>&nbsp;&nbsp;</td><td id='ns2'>nextStart2</td></tr>"
+    "<tr><td>End  : </td><td><input type='number' name='eh2' id='eh2' min='0' max='23' size='2' value='endhr2  ' placeholder='hr'></td><td> : </td>"
+    "<td><input type='number' name='em2' id='em2' min='0' max='59' size='2' value='endmin2  ' placeholder='min'>&nbsp;&nbsp;</td><td id='ne2'>nextEnd2</td></tr>"
+    "</table>"
     "<input type='button' value='Set Timer 2' onClick='setTimer(2)'>"
     "<hr>"
     "</body></html>");
@@ -174,12 +181,7 @@ void handleManualONOFF() {
       EEPROM.write(13, STATE2);
     }
   }
-  String strMode1 = "TIMER";
-  String strMode2 = "TIMER";
-  if(MODE1 == MANUAL_MODE) strMode1 = "MANUAL";
-  if(MODE2 == MANUAL_MODE) strMode2 = "MANUAL";
-  String resp = strMode1 + "," + strMode2 + "," + String(STATE1) + "," + String(STATE2);
-  server.send(200, "text/html", resp);
+  server.send(200, "text/html", getResp());
 }
 //----------------------------------------------------------------------------
 void handleSetStartEndTimes() {
@@ -238,12 +240,7 @@ void handleSetStartEndTimes() {
   EEPROM.commit();
   calcUnixTime();
   setStates();
-  String strMode1 = "TIMER";
-  String strMode2 = "TIMER";
-  if(MODE1 == MANUAL_MODE) strMode1 = "MANUAL";
-  if(MODE2 == MANUAL_MODE) strMode2 = "MANUAL";
-  String resp = strMode1 + "," + strMode2 + "," + String(STATE1) + "," + String(STATE2);
-  server.send(200, "text/html", resp);
+  server.send(200, "text/html", getResp());
 }
 //----------------------------------------------------------------------------
 void handleSetTime() {
@@ -278,7 +275,7 @@ void handleSetTime() {
     rtc.adjust(DateTime(y, M, d, h, m, s));
   }
   calcUnixTime();
-  handleRoot();
+  server.send(200, "text/html", getResp());
 }
 //----------------------------------------------------------------------------
 void handleNotFound() {
@@ -295,6 +292,40 @@ void handleNotFound() {
   server.send(404, "text/plain", message);
 }
 //----------------------------------------------------------------------------
+String getResp() {
+  DateTime now = rtc.now();
+  String y = String(now.year(), DEC);
+  String M = pad(String(now.month(), DEC));
+  String d = pad(String(now.day(), DEC));
+  String h = pad(String(now.hour(), DEC));
+  String m = pad(String(now.minute(), DEC));
+  String s = pad(String(now.second(), DEC));
+  String currdate = d + " / " + M + " / " + y;
+  String currtime = h + " : " + m + " : " + s;
+  String strMode1 = "TIMER";
+  String strMode2 = "TIMER";
+  if(MODE1 == MANUAL_MODE) strMode1 = "MANUAL";
+  if(MODE2 == MANUAL_MODE) strMode2 = "MANUAL";
+
+  DateTime s1 = DateTime(unixstart1);
+  DateTime e1 = DateTime(unixend1);
+  DateTime s2 = DateTime(unixstart2);
+  DateTime e2 = DateTime(unixend2);
+  String nextStart1 = getDateString(s1);
+  String nextEnd1 = getDateString(e1);
+  String nextStart2 = getDateString(s2);
+  String nextEnd2 = getDateString(e2);
+
+  String resp = "";
+  resp += strMode1 + "," + strMode2 + "," + String(STATE1) + "," + String(STATE2) + "," ;
+  resp += String(starthr1) + "," + String(startmin1) + "," + String(endhr1) + "," + String(endmin1) + "," ;
+  resp += String(starthr2) + "," + String(startmin2) + "," + String(endhr2) + "," + String(endmin2) + "," ;
+  resp += nextStart1 + "," + nextEnd1 + "," + nextStart2 + "," + nextEnd2 + "," ;
+  resp += d + "," + M + "," + y + "," + h + "," + m + "," + s + "," + currdate + "," + currtime;
+  return resp;
+}
+//----------------------------------------------------------------------------
+
 void setup_wifi() {
   WiFi.softAP(ssid);
 
